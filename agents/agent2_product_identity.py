@@ -7,7 +7,9 @@ class ProductIdentityAgent(DenominatorAgent):
     """Agent #2: Cross-references complaints to official GUDIDs.
 
     Owner: Pranay + Roma (Day 5)
-    Uses 1 Claude API call, cached after first run.
+    Uses 1 OpenAI (gpt-4o-mini) API call, cached after first run.
+    See agents/llm_client.py for the shared client (switched from the
+    original Claude plan to OpenAI on 2026-09-07).
     """
 
     name = "product_identity"
