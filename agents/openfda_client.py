@@ -1,0 +1,78 @@
+"""
+Generic openFDA HTTP client shared by every openFDA-backed data source in
+this project (device/event via maude_client.py, device/udi via
+gudid_client.py, and any future endpoint). Keeps retry/backoff, rate-limit
+budgeting, and the anonymous-vs-keyed page-size quirk in one place.
+"""
+
+import sys
+import time
+
+import requests
+
+PAGE_LIMIT_WITH_KEY = 1000  # openFDA max records per request
+PAGE_LIMIT_NO_KEY = 999  # some openFDA endpoints (confirmed: device/event) reject
+# anonymous requests at exactly limit=1000 with HTTP 403 API_KEY_MISSING.
+REQUEST_DELAY_SECONDS = 0.3
+DAILY_LIMIT_NO_KEY = 1000
+DAILY_LIMIT_WITH_KEY = 120000
+
+
+class RequestBudget:
+    """Tracks how many openFDA requests we've made this run and warns before
+    we run the account out of its daily allowance."""
+
+    def __init__(self, has_api_key: bool):
+        self.count = 0
+        self.has_api_key = has_api_key
+        self.daily_limit = DAILY_LIMIT_WITH_KEY if has_api_key else DAILY_LIMIT_NO_KEY
+        self._warned = False
+
+    def record(self):
+        self.count += 1
+        if not self._warned and self.count >= int(self.daily_limit * 0.9):
+            self._warned = True
+            print(
+                f"WARNING: {self.count} openFDA requests made this run, "
+                f"approaching the {self.daily_limit}/day limit for "
+                f"{'an API key' if self.has_api_key else 'anonymous access'}. "
+                f"{'Set OPENFDA_API_KEY to raise this limit.' if not self.has_api_key else ''}",
+                file=sys.stderr,
+            )
+
+
+def page_limit(api_key: str | None) -> int:
+    return PAGE_LIMIT_WITH_KEY if api_key else PAGE_LIMIT_NO_KEY
+
+
+def api_get(base_url: str, params: dict, api_key: str | None, budget: RequestBudget) -> dict:
+    """GET one page from an openFDA endpoint with basic retry/backoff on
+    rate limiting.
+
+    openFDA returns HTTP 404 (not an error payload) when a query matches
+    zero records -- that's treated as an empty result set, not a failure.
+    """
+    if api_key:
+        params = {**params, "api_key": api_key}
+
+    max_retries = 5
+    backoff = 1.0
+    for attempt in range(max_retries):
+        response = requests.get(base_url, params=params, timeout=30)
+        budget.record()
+
+        if response.status_code == 404:
+            return {"meta": {"results": {"total": 0}}, "results": []}
+
+        if response.status_code == 429 or response.status_code >= 500:
+            if attempt == max_retries - 1:
+                response.raise_for_status()
+            time.sleep(backoff)
+            backoff *= 2
+            continue
+
+        response.raise_for_status()
+        time.sleep(REQUEST_DELAY_SECONDS)
+        return response.json()
+
+    raise RuntimeError(f"openFDA request to {base_url} failed after retries")

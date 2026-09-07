@@ -4,22 +4,16 @@ Shared openFDA device/event client used by both the standalone CLI script
 this logic in one place means both stay in sync automatically.
 
 See scripts/fetch_maude_events.py's module docstring for the full rationale
-behind date-range bisection and the anonymous-vs-keyed page limit split.
+behind date-range bisection. Generic HTTP/retry/budget plumbing lives in
+openfda_client.py, shared with gudid_client.py (agent 2).
 """
 
-import sys
-import time
 from datetime import date, datetime, timedelta
 
-import requests
+from .openfda_client import RequestBudget, api_get as _openfda_api_get, page_limit
 
 BASE_URL = "https://api.fda.gov/device/event.json"
-PAGE_LIMIT_WITH_KEY = 1000  # openFDA max records per request
-PAGE_LIMIT_NO_KEY = 999  # anonymous requests get HTTP 403 API_KEY_MISSING at exactly limit=1000
 SKIP_CAP = 25000  # stay safely under openFDA's ~26,000 skip+limit ceiling
-REQUEST_DELAY_SECONDS = 0.3
-DAILY_LIMIT_NO_KEY = 1000
-DAILY_LIMIT_WITH_KEY = 120000
 CSV_FIELDNAMES = [
     "mdr_report_key",
     "event_type",
@@ -35,29 +29,6 @@ CSV_FIELDNAMES = [
 ]
 
 
-class RequestBudget:
-    """Tracks how many openFDA requests we've made this run and warns before
-    we run the account out of its daily allowance."""
-
-    def __init__(self, has_api_key: bool):
-        self.count = 0
-        self.has_api_key = has_api_key
-        self.daily_limit = DAILY_LIMIT_WITH_KEY if has_api_key else DAILY_LIMIT_NO_KEY
-        self._warned = False
-
-    def record(self):
-        self.count += 1
-        if not self._warned and self.count >= int(self.daily_limit * 0.9):
-            self._warned = True
-            print(
-                f"WARNING: {self.count} openFDA requests made this run, "
-                f"approaching the {self.daily_limit}/day limit for "
-                f"{'an API key' if self.has_api_key else 'anonymous access'}. "
-                f"{'Set OPENFDA_API_KEY to raise this limit.' if not self.has_api_key else ''}",
-                file=sys.stderr,
-            )
-
-
 def build_search(product_code: str, start_date: str, end_date: str) -> str:
     """Build the openFDA `search` query for one date-bounded slice."""
     return (
@@ -67,35 +38,7 @@ def build_search(product_code: str, start_date: str, end_date: str) -> str:
 
 
 def api_get(params: dict, api_key: str | None, budget: RequestBudget) -> dict:
-    """GET one page from openFDA with basic retry/backoff on rate limiting.
-
-    openFDA returns HTTP 404 (not an error payload) when a query matches zero
-    records -- that's treated as an empty result set, not a failure.
-    """
-    if api_key:
-        params = {**params, "api_key": api_key}
-
-    max_retries = 5
-    backoff = 1.0
-    for attempt in range(max_retries):
-        response = requests.get(BASE_URL, params=params, timeout=30)
-        budget.record()
-
-        if response.status_code == 404:
-            return {"meta": {"results": {"total": 0}}, "results": []}
-
-        if response.status_code == 429 or response.status_code >= 500:
-            if attempt == max_retries - 1:
-                response.raise_for_status()
-            time.sleep(backoff)
-            backoff *= 2
-            continue
-
-        response.raise_for_status()
-        time.sleep(REQUEST_DELAY_SECONDS)
-        return response.json()
-
-    raise RuntimeError("openFDA request failed after retries")
+    return _openfda_api_get(BASE_URL, params, api_key, budget)
 
 
 def get_total_count(
@@ -114,14 +57,14 @@ def fetch_slice(
     product_code: str, start_date: str, end_date: str, api_key: str | None, budget: RequestBudget, total: int
 ) -> list[dict]:
     """Paginate a date slice already known to be at or under SKIP_CAP records."""
-    page_limit = PAGE_LIMIT_WITH_KEY if api_key else PAGE_LIMIT_NO_KEY
+    limit = page_limit(api_key)
     records = []
     skip = 0
     fetch_count = min(total, SKIP_CAP)
     while skip < fetch_count:
         params = {
             "search": build_search(product_code, start_date, end_date),
-            "limit": page_limit,
+            "limit": limit,
             "skip": skip,
         }
         payload = api_get(params, api_key, budget)
@@ -129,7 +72,7 @@ def fetch_slice(
         if not page:
             break
         records.extend(page)
-        skip += page_limit
+        skip += limit
     return records
 
 
