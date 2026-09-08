@@ -10,7 +10,7 @@ from .problem_categorizer import categorize_problems
 class MaudeIngestionAgent(DenominatorAgent):
     """Agent #1: Fetches FDA MAUDE complaints and normalizes them via LLM.
 
-    Owner: Shahul + Dhruv (Days 3-4)
+    Planned: Days 3-4
     Uses OpenAI (gpt-4o-mini) to classify each record's narrative into a
     fixed problem category (see problem_categorizer.py); batched and cached
     so re-running on the same records costs nothing. Requires

@@ -10,7 +10,7 @@ from .product_identity_matcher import match_products
 class ProductIdentityAgent(DenominatorAgent):
     """Agent #2: Cross-references complaints to official GUDIDs.
 
-    Owner: Pranay + Roma (Day 5)
+    Planned: Day 5
 
     Takes records from Agent 1 (each with a raw brand_name/manufacturer_name
     from MAUDE) and matches each to a canonical device record in the FDA's

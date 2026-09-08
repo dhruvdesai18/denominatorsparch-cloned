@@ -30,16 +30,15 @@ def _estimate_cost_usd(tokens: int) -> float:
 @dataclass
 class PlannedCall:
     agent: str
-    owner: str
     tokens: int
     cost_usd: float
     week: int
 
 
 PLANNED_CALLS: list[PlannedCall] = [
-    PlannedCall("Agent #1: MAUDE Ingestion", "Shahul + Dhruv", 2_300, _estimate_cost_usd(2_300), week=1),
-    PlannedCall("Agent #2: Product Identity", "Pranay + Roma", 1_800, _estimate_cost_usd(1_800), week=1),
-    PlannedCall("Agent #5: Document Impact", "Swetha + Pranay", 3_000, _estimate_cost_usd(3_000), week=2),
+    PlannedCall("Agent #1: MAUDE Ingestion", 2_300, _estimate_cost_usd(2_300), week=1),
+    PlannedCall("Agent #2: Product Identity", 1_800, _estimate_cost_usd(1_800), week=1),
+    PlannedCall("Agent #5: Document Impact", 3_000, _estimate_cost_usd(3_000), week=2),
 ]
 
 
@@ -53,7 +52,7 @@ def report() -> str:
         total_tokens_used += call.tokens
         total_cost += cost
         lines.append(
-            f"Week {call.week} | {call.agent:<30} | {call.owner:<16} "
+            f"Week {call.week} | {call.agent:<30} "
             f"| {call.tokens:>6} tok | ${cost:>7.4f}"
         )
 

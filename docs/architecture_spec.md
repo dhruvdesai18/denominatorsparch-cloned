@@ -1,6 +1,6 @@
 # Architecture Spec (Draft — Day 1)
 
-Placeholder for the exported architecture diagram (Task 1A, Roma + Pranay).
+Placeholder for the exported architecture diagram (Task 1A).
 Add the final PNG/PDF export here as `architecture_diagram.png` /
 `architecture_diagram.pdf`.
 

@@ -25,8 +25,8 @@ python3 config/token_counter.py
 
 ## Budget
 147,000 tokens (21,000 x 7 people via Manus). Only 3 planned LLM calls
-(Agents #1, #2, #5) totaling ~$16.44 — everything else is free APIs or
-pure Python. See `config/token_counter.py`.
+(Agents #1, #2, #5), now on OpenAI gpt-4o-mini (~$0.002 total estimated)
+— everything else is free APIs or pure Python. See `config/token_counter.py`.
 
 ## Non-negotiables
 - Human decision gate before any QMS action.
