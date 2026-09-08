@@ -26,6 +26,7 @@ CSV_FIELDNAMES = [
     "device_report_product_code",
     "product_problems",
     "patient_outcome",
+    "reporter_country_code",
 ]
 
 
@@ -182,6 +183,7 @@ def flatten_record(raw: dict, product_code: str) -> dict:
         "device_report_product_code": device.get("device_report_product_code", ""),
         "product_problems": ";".join(product_problems),
         "patient_outcome": extract_patient_outcome(raw.get("patient", [])),
+        "reporter_country_code": raw.get("reporter_country_code", ""),
     }
 
 

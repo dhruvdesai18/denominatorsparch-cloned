@@ -17,10 +17,18 @@ Every cache key, CSV, and threshold rationale downstream inherits this choice.
 | Field | Value |
 |---|---|
 | product_family | INFUSION_PUMP_001 |
-| period_start | 2026-01-01 |
-| period_end | 2026-06-30 |
+| period_start | 2026-01-01 (default example -- see note below) |
+| period_end | 2026-06-30 (default example -- see note below) |
 | geography | US |
 | exposure_definition | units distributed |
+
+> **Note (2026-09-08):** `product_family` and `geography` are locked and
+> irreversible per the status above. `period_start`/`period_end` are
+> **not** hard-locked the same way -- Agent 4 (scope validation) takes the
+> review period as a runtime input rather than reading it from this file,
+> since the team expects to validate different periods across different
+> runs (e.g. the verified 2024 MAUDE pull vs. this file's original 2026 H1
+> example). The values above are a default/example only.
 
 ## Threshold rationale
 The demonstration review threshold is **0.75%**. This is a **demonstration
@@ -38,6 +46,5 @@ queries, data contracts, fixtures, and prompt design — are built against
 this product family and date window.
 
 ## Decided by
-Dhruv Atul Desai, on behalf of the team — recorded here per the Week 1 plan's
-requirement that scope be written down before Day 3 begins. Product code
-corrected to FRN on 2026-09-05, also by Dhruv Atul Desai.
+Recorded here per the Week 1 plan's requirement that scope be written
+down before Day 3 begins. Product code corrected to FRN on 2026-09-05.
